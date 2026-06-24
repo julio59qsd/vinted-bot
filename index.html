@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vinted Bot — Mes alertes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f0f13;
+    color: #e8e8f0;
+    min-height: 100vh;
+    padding: 20px;
+  }
+
+  .header {
+    text-align: center;
+    padding: 32px 0 24px;
+  }
+
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #09b3ef, #7b61ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 6px;
+  }
+
+  .header p {
+    color: #6b6b80;
+    font-size: 14px;
+  }
+
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    font-size: 13px;
+    color: #6b6b80;
+  }
+
+  .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+    box-shadow: 0 0 8px #22c55e;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .card {
+    background: #1a1a24;
+    border: 1px solid #2a2a38;
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 600px;
+    margin: 0 auto 20px;
+  }
+
+  .card h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #c8c8e0;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .form-full { grid-column: 1 / -1; }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: #6b6b80;
+    margin-bottom: 6px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  input, select {
+    width: 100%;
+    background: #0f0f13;
+    border: 1px solid #2a2a38;
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: #e8e8f0;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus {
+    border-color: #09b3ef;
+  }
+
+  select option { background: #1a1a24; }
+
+  .btn-add {
+    width: 100%;
+    background: linear-gradient(135deg, #09b3ef, #7b61ff);
+    border: none;
+    border-radius: 10px;
+    padding: 12px;
+    color: white;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: opacity 0.2s;
+  }
+
+  .btn-add:hover { opacity: 0.85; }
+
+  .filtres-list { max-width: 600px; margin: 0 auto; }
+
+  .filtre-card {
+    background: #1a1a24;
+    border: 1px solid #2a2a38;
+    border-radius: 14px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .filtre-card.inactif {
+    opacity: 0.45;
+    border-color: #1e1e2a;
+  }
+
+  .filtre-info { flex: 1; }
+
+  .filtre-nom {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #e8e8f0;
+  }
+
+  .filtre-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag {
+    background: #0f0f13;
+    border: 1px solid #2a2a38;
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-size: 12px;
+    color: #8888a0;
+  }
+
+  .tag.couleur { border-color: #7b61ff44; color: #9b81ff; }
+  .tag.etat { border-color: #09b3ef44; color: #09b3ef; }
+  .tag.prix { border-color: #22c55e44; color: #22c55e; }
+
+  .filtre-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    border: 1px solid #2a2a38;
+    background: #0f0f13;
+    color: #8888a0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    transition: all 0.2s;
+  }
+
+  .btn-icon:hover { border-color: #09b3ef; color: #09b3ef; }
+  .btn-icon.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+  .empty {
+    text-align: center;
+    color: #3a3a50;
+    font-size: 14px;
+    padding: 40px 0;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #22c55e;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: transform 0.3s;
+    z-index: 999;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🤖 Vinted Bot</h1>
+  <p>Tes alertes automatiques Vinted</p>
+</div>
+
+<div class="status-bar">
+  <div class="dot"></div>
+  Bot actif — alertes Telegram activées
+</div>
+
+<div class="card">
+  <h2>➕ Nouvelle alerte</h2>
+  <div class="form-grid">
+    <div class="form-full">
+      <label>Nom de l'alerte</label>
+      <input type="text" id="nom" placeholder="ex: Ralph Lauren rouge">
+    </div>
+    <div class="form-full">
+      <label>Recherche</label>
+      <input type="text" id="recherche" placeholder="ex: ralph lauren polo">
+    </div>
+    <div>
+      <label>Couleur</label>
+      <select id="couleur">
+        <option value="">— Toutes —</option>
+        <option value="rouge">Rouge</option>
+        <option value="noir">Noir</option>
+        <option value="blanc">Blanc</option>
+        <option value="bleu">Bleu</option>
+        <option value="vert">Vert</option>
+        <option value="jaune">Jaune</option>
+        <option value="rose">Rose</option>
+        <option value="gris">Gris</option>
+        <option value="marron">Marron</option>
+        <option value="orange">Orange</option>
+        <option value="violet">Violet</option>
+        <option value="beige">Beige</option>
+      </select>
+    </div>
+    <div>
+      <label>État</label>
+      <select id="etat">
+        <option value="">— Tous —</option>
+        <option value="neuf avec étiquette">Neuf avec étiquette</option>
+        <option value="neuf sans étiquette">Neuf sans étiquette</option>
+        <option value="très bon état">Très bon état</option>
+        <option value="bon état">Bon état</option>
+        <option value="satisfaisant">Satisfaisant</option>
+      </select>
+    </div>
+    <div>
+      <label>Taille (optionnel)</label>
+      <input type="text" id="taille" placeholder="ex: M, L, 42">
+    </div>
+    <div>
+      <label>Prix max (€)</label>
+      <input type="number" id="prix_max" placeholder="ex: 50">
+    </div>
+  </div>
+  <button class="btn-add" onclick="ajouterFiltre()">Créer l'alerte</button>
+</div>
+
+<div class="filtres-list" id="filtres-list"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+async function chargerFiltres() {
+  const res = await fetch('/api/filtres');
+  const filtres = await res.json();
+  const container = document.getElementById('filtres-list');
+  
+  if (filtres.length === 0) {
+    container.innerHTML = '<div class="empty">Aucune alerte active.<br>Crée ta première alerte ci-dessus !</div>';
+    return;
+  }
+
+  container.innerHTML = filtres.map(f => `
+    <div class="filtre-card ${f.actif ? '' : 'inactif'}" id="fc-${f.id}">
+      <div class="filtre-info">
+        <div class="filtre-nom">${f.nom}</div>
+        <div class="filtre-tags">
+          <span class="tag">🔍 ${f.recherche}</span>
+          ${f.couleur ? `<span class="tag couleur">🎨 ${f.couleur}</span>` : ''}
+          ${f.etat ? `<span class="tag etat">✨ ${f.etat}</span>` : ''}
+          ${f.taille ? `<span class="tag">📏 ${f.taille}</span>` : ''}
+          ${f.prix_max ? `<span class="tag prix">💶 max ${f.prix_max}€</span>` : ''}
+        </div>
+      </div>
+      <div class="filtre-actions">
+        <button class="btn-icon" onclick="toggleFiltre('${f.id}')" title="${f.actif ? 'Désactiver' : 'Activer'}">
+          ${f.actif ? '⏸️' : '▶️'}
+        </button>
+        <button class="btn-icon danger" onclick="supprimerFiltre('${f.id}')" title="Supprimer">🗑️</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function ajouterFiltre() {
+  const nom = document.getElementById('nom').value.trim();
+  const recherche = document.getElementById('recherche').value.trim();
+  if (!recherche) { showToast('❌ Saisis une recherche !', '#ef4444'); return; }
+
+  await fetch('/api/filtres', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      nom: nom || recherche,
+      recherche,
+      couleur: document.getElementById('couleur').value,
+      etat: document.getElementById('etat').value,
+      taille: document.getElementById('taille').value,
+      prix_max: document.getElementById('prix_max').value,
+    })
+  });
+
+  ['nom','recherche','taille','prix_max'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('couleur').value = '';
+  document.getElementById('etat').value = '';
+  showToast('✅ Alerte créée !');
+  chargerFiltres();
+}
+
+async function supprimerFiltre(id) {
+  if (!confirm('Supprimer cette alerte ?')) return;
+  await fetch(`/api/filtres/${id}`, { method: 'DELETE' });
+  showToast('🗑️ Alerte supprimée');
+  chargerFiltres();
+}
+
+async function toggleFiltre(id) {
+  await fetch(`/api/filtres/${id}/toggle`, { method: 'POST' });
+  chargerFiltres();
+}
+
+function showToast(msg, color = '#22c55e') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+chargerFiltres();
+setInterval(chargerFiltres, 10000);
+</script>
+</body>
+</html>
