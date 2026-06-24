@@ -3,6 +3,7 @@ import json
 import os
 import threading
 import requests
+from datetime import datetime, timezone, timedelta
 from vinted_scraper import VintedScraper
 from flask import Flask, jsonify, request
 
@@ -75,6 +76,15 @@ def bot_loop():
                 for item in items:
                     item_id = str(item.id)
                     cle = f"{filtre['id']}_{item_id}"
+
+                    # Ignore les annonces de plus de 24h
+                    try:
+                        date_annonce = datetime.fromisoformat(str(item.created_at_ts).replace("Z", "+00:00"))
+                        if datetime.now(timezone.utc) - date_annonce > timedelta(hours=24):
+                            continue
+                    except Exception:
+                        pass  # Si pas de date disponible, on laisse passer
+
                     if cle not in annonces_vues:
                         annonces_vues.add(cle)
                         prix = f"{item.price} EUR" if item.price else "Prix inconnu"
