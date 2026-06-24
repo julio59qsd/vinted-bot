@@ -74,17 +74,26 @@ def bot_loop():
                     params["price_to"] = filtre["prix_max"]
                 items = scraper.search(params)
                 for item in items:
-                    print(vars(item))
                     item_id = str(item.id)
                     cle = f"{filtre['id']}_{item_id}"
 
                     # Ignore les annonces de plus de 24h
                     try:
-                        date_annonce = datetime.fromisoformat(str(item.created_at_ts).replace("Z", "+00:00"))
-                        if datetime.now(timezone.utc) - date_annonce > timedelta(hours=24):
-                            continue
+                        ts = item.json_data.get("photo", {}).get("high_resolution", {}).get("timestamp")
+                        if ts:
+                            date_annonce = datetime.fromtimestamp(ts, tz=timezone.utc)
+                            if datetime.now(timezone.utc) - date_annonce > timedelta(hours=24):
+                                print(f"Ignore (trop vieux) : {item.title}")
+                                continue
                     except Exception:
                         pass  # Si pas de date disponible, on laisse passer
+
+                    # Verifie que le titre contient au moins un mot cle de la recherche
+                    mots_cles = [mot.lower() for mot in filtre["recherche"].split() if len(mot) > 2]
+                    titre = (item.title or "").lower()
+                    if mots_cles and not any(mot in titre for mot in mots_cles):
+                        print(f"Ignore (titre hors sujet) : {item.title}")
+                        continue
 
                     if cle not in annonces_vues:
                         annonces_vues.add(cle)
