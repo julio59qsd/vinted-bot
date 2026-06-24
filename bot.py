@@ -24,8 +24,7 @@ ETATS = {
 }
 
 app = Flask(__name__)
-
-HTML = open("/app/index.html").read() if os.path.exists("/app/index.html") else ""
+MOT_DE_PASSE = os.environ.get("MOT_DE_PASSE", "vinted123")
 
 def charger_filtres():
     if os.path.exists(FICHIER_FILTRES):
@@ -96,6 +95,9 @@ def bot_loop():
                 print(f"Erreur filtre {filtre.get('nom')} : {e}")
         time.sleep(INTERVALLE_SECONDES)
 
+def verifier_mdp():
+    return request.headers.get("X-Password") == MOT_DE_PASSE
+
 @app.route("/")
 def index():
     return """<!DOCTYPE html>
@@ -141,56 +143,171 @@ select option{background:#1a1a24}
 .empty{text-align:center;color:#3a3a50;font-size:14px;padding:40px 0}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#22c55e;color:white;padding:12px 24px;border-radius:30px;font-size:14px;font-weight:500;transition:transform .3s;z-index:999}
 .toast.show{transform:translateX(-50%) translateY(0)}
+/* Ecran de connexion */
+#login-screen{position:fixed;inset:0;background:#0f0f13;display:flex;align-items:center;justify-content:center;z-index:9999}
+#login-screen.hidden{display:none}
+.login-box{background:#1a1a24;border:1px solid #2a2a38;border-radius:20px;padding:40px;width:100%;max-width:360px;text-align:center}
+.login-box h2{font-size:22px;font-weight:700;background:linear-gradient(135deg,#09b3ef,#7b61ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.login-box p{color:#6b6b80;font-size:13px;margin-bottom:24px}
+.login-box input{margin-bottom:14px;text-align:center;letter-spacing:2px}
+.login-error{color:#ef4444;font-size:12px;margin-top:8px;min-height:16px}
 </style>
 </head>
 <body>
-<div class="header"><h1>Vinted Bot</h1><p>Tes alertes automatiques Vinted</p></div>
-<div class="status-bar"><div class="dot"></div>Bot actif - alertes Telegram activees</div>
-<div class="card">
-  <h2>Nouvelle alerte</h2>
-  <div class="form-grid">
-    <div class="form-full"><label>Nom de l'alerte</label><input type="text" id="nom" placeholder="ex: Ralph Lauren rouge"></div>
-    <div class="form-full"><label>Recherche</label><input type="text" id="recherche" placeholder="ex: ralph lauren polo"></div>
-    <div><label>Couleur</label><select id="couleur"><option value="">Toutes</option><option value="rouge">Rouge</option><option value="noir">Noir</option><option value="blanc">Blanc</option><option value="bleu">Bleu</option><option value="vert">Vert</option><option value="jaune">Jaune</option><option value="rose">Rose</option><option value="gris">Gris</option><option value="marron">Marron</option><option value="orange">Orange</option><option value="violet">Violet</option><option value="beige">Beige</option></select></div>
-    <div><label>Etat</label><select id="etat"><option value="">Tous</option><option value="neuf avec etiquette">Neuf avec etiquette</option><option value="neuf sans etiquette">Neuf sans etiquette</option><option value="tres bon etat">Tres bon etat</option><option value="bon etat">Bon etat</option><option value="satisfaisant">Satisfaisant</option></select></div>
-    <div><label>Taille</label><input type="text" id="taille" placeholder="ex: M, L, 42"></div>
-    <div><label>Prix max (EUR)</label><input type="number" id="prix_max" placeholder="ex: 50"></div>
+
+<!-- Ecran de connexion -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>Vinted Bot</h2>
+    <p>Entre le mot de passe pour acceder</p>
+    <input type="password" id="mdp-input" placeholder="Mot de passe" onkeydown="if(event.key==='Enter')connexion()">
+    <button class="btn-add" onclick="connexion()">Acceder</button>
+    <div class="login-error" id="login-error"></div>
   </div>
-  <button class="btn-add" onclick="ajouterFiltre()">Creer l'alerte</button>
 </div>
-<div class="filtres-list" id="filtres-list"></div>
+
+<!-- Interface principale -->
+<div id="main-app" style="display:none">
+  <div class="header"><h1>Vinted Bot</h1><p>Tes alertes automatiques Vinted</p></div>
+  <div class="status-bar"><div class="dot"></div>Bot actif - alertes Telegram activees</div>
+  <div class="card">
+    <h2>Nouvelle alerte</h2>
+    <div class="form-grid">
+      <div class="form-full"><label>Nom de l'alerte</label><input type="text" id="nom" placeholder="ex: Ralph Lauren rouge"></div>
+      <div class="form-full"><label>Recherche</label><input type="text" id="recherche" placeholder="ex: ralph lauren polo"></div>
+      <div><label>Couleur</label><select id="couleur"><option value="">Toutes</option><option value="rouge">Rouge</option><option value="noir">Noir</option><option value="blanc">Blanc</option><option value="bleu">Bleu</option><option value="vert">Vert</option><option value="jaune">Jaune</option><option value="rose">Rose</option><option value="gris">Gris</option><option value="marron">Marron</option><option value="orange">Orange</option><option value="violet">Violet</option><option value="beige">Beige</option></select></div>
+      <div><label>Etat</label><select id="etat"><option value="">Tous</option><option value="neuf avec etiquette">Neuf avec etiquette</option><option value="neuf sans etiquette">Neuf sans etiquette</option><option value="tres bon etat">Tres bon etat</option><option value="bon etat">Bon etat</option><option value="satisfaisant">Satisfaisant</option></select></div>
+      <div><label>Taille</label><input type="text" id="taille" placeholder="ex: M, L, 42"></div>
+      <div><label>Prix max (EUR)</label><input type="number" id="prix_max" placeholder="ex: 50"></div>
+    </div>
+    <button class="btn-add" onclick="ajouterFiltre()">Creer l'alerte</button>
+  </div>
+  <div class="filtres-list" id="filtres-list"></div>
+</div>
+
 <div class="toast" id="toast"></div>
+
 <script>
-async function chargerFiltres(){const res=await fetch('/api/filtres');const filtres=await res.json();const c=document.getElementById('filtres-list');if(!filtres.length){c.innerHTML='<div class="empty">Aucune alerte.<br>Cree ta premiere alerte ci-dessus !</div>';return}c.innerHTML=filtres.map(f=>`<div class="filtre-card ${f.actif?'':'inactif'}"><div class="filtre-info"><div class="filtre-nom">${f.nom}</div><div class="filtre-tags"><span class="tag">${f.recherche}</span>${f.couleur?`<span class="tag couleur">${f.couleur}</span>`:''} ${f.etat?`<span class="tag etat">${f.etat}</span>`:''} ${f.prix_max?`<span class="tag prix">max ${f.prix_max}EUR</span>`:''}</div></div><div class="filtre-actions"><button class="btn-icon" onclick="toggleFiltre('${f.id}')">${f.actif?'⏸':'▶'}</button><button class="btn-icon danger" onclick="supprimerFiltre('${f.id}')">🗑</button></div></div>`).join('')}
-async function ajouterFiltre(){const r=document.getElementById('recherche').value.trim();if(!r){showToast('Saisis une recherche !','#ef4444');return}await fetch('/api/filtres',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nom:document.getElementById('nom').value.trim()||r,recherche:r,couleur:document.getElementById('couleur').value,etat:document.getElementById('etat').value,taille:document.getElementById('taille').value,prix_max:document.getElementById('prix_max').value})});['nom','recherche','taille','prix_max'].forEach(id=>document.getElementById(id).value='');document.getElementById('couleur').value='';document.getElementById('etat').value='';showToast('Alerte creee !');chargerFiltres()}
-async function supprimerFiltre(id){if(!confirm('Supprimer ?'))return;await fetch('/api/filtres/'+id,{method:'DELETE'});showToast('Supprime');chargerFiltres()}
-async function toggleFiltre(id){await fetch('/api/filtres/'+id+'/toggle',{method:'POST'});chargerFiltres()}
+let mdp = localStorage.getItem('vinted_mdp') || '';
+
+// Verifie si deja connecte au chargement
+if (mdp) testerMdp(mdp);
+
+async function testerMdp(password) {
+  const res = await fetch('/api/filtres', { headers: { 'X-Password': password } });
+  if (res.ok) {
+    mdp = password;
+    localStorage.setItem('vinted_mdp', mdp);
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-app').style.display = 'block';
+    chargerFiltres();
+  } else {
+    localStorage.removeItem('vinted_mdp');
+    mdp = '';
+  }
+}
+
+async function connexion() {
+  const password = document.getElementById('mdp-input').value;
+  if (!password) return;
+  const res = await fetch('/api/filtres', { headers: { 'X-Password': password } });
+  if (res.ok) {
+    mdp = password;
+    localStorage.setItem('vinted_mdp', mdp);
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-app').style.display = 'block';
+    chargerFiltres();
+  } else {
+    document.getElementById('login-error').textContent = 'Mot de passe incorrect.';
+    setTimeout(() => document.getElementById('login-error').textContent = '', 2000);
+  }
+}
+
+async function fetchSecure(url, opts={}) {
+  opts.headers = {...(opts.headers||{}), 'X-Password': mdp};
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    localStorage.removeItem('vinted_mdp');
+    location.reload();
+  }
+  return res;
+}
+
+async function chargerFiltres(){
+  const res = await fetchSecure('/api/filtres');
+  const filtres = await res.json();
+  const c = document.getElementById('filtres-list');
+  if(!filtres.length){c.innerHTML='<div class="empty">Aucune alerte.<br>Cree ta premiere alerte ci-dessus !</div>';return}
+  c.innerHTML=filtres.map(f=>`<div class="filtre-card ${f.actif?'':'inactif'}"><div class="filtre-info"><div class="filtre-nom">${f.nom}</div><div class="filtre-tags"><span class="tag">${f.recherche}</span>${f.couleur?`<span class="tag couleur">${f.couleur}</span>`:''} ${f.etat?`<span class="tag etat">${f.etat}</span>`:''} ${f.prix_max?`<span class="tag prix">max ${f.prix_max}EUR</span>`:''}</div></div><div class="filtre-actions"><button class="btn-icon" onclick="toggleFiltre('${f.id}')">${f.actif?'⏸':'▶'}</button><button class="btn-icon danger" onclick="supprimerFiltre('${f.id}')">🗑</button></div></div>`).join('')
+}
+
+async function ajouterFiltre(){
+  const r=document.getElementById('recherche').value.trim();
+  if(!r){showToast('Saisis une recherche !','#ef4444');return}
+  await fetchSecure('/api/filtres',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nom:document.getElementById('nom').value.trim()||r,recherche:r,couleur:document.getElementById('couleur').value,etat:document.getElementById('etat').value,taille:document.getElementById('taille').value,prix_max:document.getElementById('prix_max').value})});
+  ['nom','recherche','taille','prix_max'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('couleur').value='';
+  document.getElementById('etat').value='';
+  showToast('Alerte creee !');
+  chargerFiltres()
+}
+
+async function supprimerFiltre(id){
+  if(!confirm('Supprimer ?'))return;
+  await fetchSecure('/api/filtres/'+id,{method:'DELETE'});
+  showToast('Supprime');
+  chargerFiltres()
+}
+
+async function toggleFiltre(id){
+  await fetchSecure('/api/filtres/'+id+'/toggle',{method:'POST'});
+  chargerFiltres()
+}
+
 function showToast(m,c='#22c55e'){const t=document.getElementById('toast');t.textContent=m;t.style.background=c;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
-chargerFiltres();setInterval(chargerFiltres,10000);
+
+setInterval(()=>{ if(mdp) chargerFiltres(); },10000);
 </script>
 </body>
 </html>"""
 
 @app.route("/api/filtres", methods=["GET"])
 def get_filtres():
+    if not verifier_mdp():
+        return jsonify({"error": "Non autorise"}), 401
     return jsonify(charger_filtres())
 
 @app.route("/api/filtres", methods=["POST"])
 def add_filtre():
+    if not verifier_mdp():
+        return jsonify({"error": "Non autorise"}), 401
     data = request.json
     filtres = charger_filtres()
-    nouveau = {"id": str(int(time.time())), "nom": data.get("nom", data.get("recherche")), "recherche": data["recherche"], "couleur": data.get("couleur", ""), "etat": data.get("etat", ""), "taille": data.get("taille", ""), "prix_max": data.get("prix_max", ""), "actif": True}
+    nouveau = {
+        "id": str(int(time.time())),
+        "nom": data.get("nom", data.get("recherche")),
+        "recherche": data["recherche"],
+        "couleur": data.get("couleur", ""),
+        "etat": data.get("etat", ""),
+        "taille": data.get("taille", ""),
+        "prix_max": data.get("prix_max", ""),
+        "actif": True
+    }
     filtres.append(nouveau)
     sauvegarder_filtres(filtres)
     return jsonify({"ok": True, "filtre": nouveau})
 
 @app.route("/api/filtres/<filtre_id>", methods=["DELETE"])
 def delete_filtre(filtre_id):
+    if not verifier_mdp():
+        return jsonify({"error": "Non autorise"}), 401
     sauvegarder_filtres([f for f in charger_filtres() if f["id"] != filtre_id])
     return jsonify({"ok": True})
 
 @app.route("/api/filtres/<filtre_id>/toggle", methods=["POST"])
 def toggle_filtre(filtre_id):
+    if not verifier_mdp():
+        return jsonify({"error": "Non autorise"}), 401
     filtres = charger_filtres()
     for f in filtres:
         if f["id"] == filtre_id:
