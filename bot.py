@@ -82,7 +82,7 @@ def bot_loop():
                         ts = item.json_data.get("photo", {}).get("high_resolution", {}).get("timestamp")
                         if ts:
                             date_annonce = datetime.fromtimestamp(ts, tz=timezone.utc)
-                            if datetime.now(timezone.utc) - date_annonce > timedelta(hours=24):
+                            if datetime.now(timezone.utc) - date_annonce > timedelta(days=7):
                                 print(f"Ignore (trop vieux) : {item.title}")
                                 continue
                     except Exception:
