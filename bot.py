@@ -74,6 +74,7 @@ def bot_loop():
                     params["price_to"] = filtre["prix_max"]
                 items = scraper.search(params)
                 for item in items:
+                    print(vars(item))
                     item_id = str(item.id)
                     cle = f"{filtre['id']}_{item_id}"
 
